@@ -7150,6 +7150,7 @@ int whisper_full_with_state(
         return -5;
     }
     state->exp_n_audio_ctx = params.audio_ctx;
+    const int n_audio_ctx = params.audio_ctx > 0 ? params.audio_ctx : whisper_n_audio_ctx(ctx);
 
     // these tokens determine the task that will be performed
     std::vector<whisper_token> prompt_init = { whisper_token_sot(ctx), };
@@ -7599,7 +7600,9 @@ int whisper_full_with_state(
 
                     // sometimes, the decoding can get stuck in a repetition loop
                     // this is an attempt to mitigate such cases - we flag the decoding as failed and use a fallback strategy
-                    if (i == n_max - 1 && (result_len == 0 || seek_delta < 100*WHISPER_CHUNK_SIZE/2)) {
+                    // Only relax the progress threshold for timestamps inside the encoded window.
+                    const int seek_delta_min = seek_delta <= 2*n_audio_ctx ? n_audio_ctx : 100*WHISPER_CHUNK_SIZE/2;
+                    if (i == n_max - 1 && (result_len == 0 || seek_delta < seek_delta_min)) {
                         WHISPER_LOG_DEBUG("%s: decoder %d: failed due to repetition loop\n", __func__, j);
                         failed = true;
                         continue;
