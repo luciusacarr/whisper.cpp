@@ -6993,6 +6993,10 @@ int whisper_full_with_state(
     result_all.clear();
 
     if (n_samples > 0) {
+        if (params.duration_ms > 0) {
+            n_samples = (int) std::min<int64_t>(n_samples, (int64_t) (params.offset_ms + params.duration_ms) * WHISPER_SAMPLE_RATE / 1000);
+        }
+
         // compute log mel spectrogram
         if (whisper_pcm_to_mel_with_state(ctx, state, samples, n_samples, params.n_threads) != 0) {
             WHISPER_LOG_ERROR("%s: failed to compute log mel spectrogram\n", __func__);
@@ -8012,6 +8016,10 @@ int whisper_full_parallel(
     // prepare separate states for each thread
     std::vector<whisper_state*> states;
 
+    if (n_samples > 0 && params.duration_ms > 0) {
+        n_samples = (int) std::min<int64_t>(n_samples, (int64_t) (params.offset_ms + params.duration_ms) * WHISPER_SAMPLE_RATE / 1000);
+    }
+
     const int offset_samples = (WHISPER_SAMPLE_RATE*params.offset_ms)/1000;
     const int n_samples_per_processor = (n_samples - offset_samples)/n_processors;
 
@@ -8029,6 +8037,7 @@ int whisper_full_parallel(
         auto params_cur = params;
 
         params_cur.offset_ms = 0;
+        params_cur.duration_ms = 0;
         params_cur.print_progress = false;
         params_cur.print_realtime = false;
 
